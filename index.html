@@ -451,35 +451,71 @@
             });
         }
 
-        // Fetch photos from Google Forms/Sheets using CORS proxy
+        // Fetch photos from Google Forms/Sheets with fallback methods
         async function fetchPhotosFromGoogle() {
             try {
-                console.log('Fetching photos via proxy...');
+                console.log('Trying multiple methods to fetch photos...');
                 
-                const response = await fetch(CONFIG.GOOGLE_SCRIPT_URL, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
+                // Method 1: Direct fetch (might work in some cases)
+                try {
+                    const directUrl = 'https://script.google.com/macros/s/AKfycbwUmbhcirTlWZDRP7VMLdftJ2Q166OjVLK56kXFbKyKYREd0EgLoSswmrH6Dbll0V4/exec';
+                    const response = await fetch(directUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Direct fetch success:', data);
+                        
+                        if (data.success && data.photos) {
+                            updateConnectionStatus(true, `เชื่อมต่อแล้ว (${data.photos.length} ภาพ)`);
+                            return data.photos;
+                        }
                     }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                } catch (directError) {
+                    console.log('Direct fetch failed:', directError.message);
                 }
                 
-                const proxyData = await response.json();
-                console.log('Proxy Response:', proxyData);
-                
-                // Parse the actual data from proxy
-                const data = JSON.parse(proxyData.contents);
-                console.log('API Response:', data);
-                
-                if (data.success && data.photos) {
-                    updateConnectionStatus(true, `เชื่อมต่อแล้ว (${data.photos.length} ภาพ)`);
-                    return data.photos;
-                } else {
-                    throw new Error(data.error || 'ไม่สามารถดึงข้อมูลได้');
+                // Method 2: Using different proxy
+                try {
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent('https://script.google.com/macros/s/AKfycbwUmbhcirTlWZDRP7VMLdftJ2Q166OjVLK56kXFbKyKYREd0EgLoSswmrH6Dbll0V4/exec')}`;
+                    const response = await fetch(proxyUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Proxy fetch success:', data);
+                        
+                        if (data.success && data.photos) {
+                            updateConnectionStatus(true, `เชื่อมต่อแล้ว (${data.photos.length} ภาพ)`);
+                            return data.photos;
+                        }
+                    }
+                } catch (proxyError) {
+                    console.log('Proxy fetch failed:', proxyError.message);
                 }
+                
+                // Method 3: Demo data for testing
+                console.log('All methods failed, using demo data');
+                updateConnectionStatus(false, 'ใช้ข้อมูลตัวอย่าง');
+                
+                return [
+                    {
+                        id: 1,
+                        url: 'https://picsum.photos/400/400?random=1',
+                        timestamp: new Date().toISOString(),
+                        name: 'Demo Photo 1'
+                    },
+                    {
+                        id: 2,
+                        url: 'https://picsum.photos/400/400?random=2',
+                        timestamp: new Date().toISOString(),
+                        name: 'Demo Photo 2'
+                    }
+                ];
                 
             } catch (error) {
                 console.error('Error fetching photos:', error);
