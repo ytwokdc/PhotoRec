@@ -128,13 +128,15 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            min-height: calc(100vh - 100px); /* Force minimum height */
         }
 
         .gallery {
             display: grid;
-            gap: 2px;
+            gap: 10px;
             width: 100%;
             height: 100%;
+            min-height: 500px; /* Minimum height for gallery */
             max-width: calc(100vw - 30px);
             max-height: calc(100vh - 100px);
         }
@@ -350,35 +352,47 @@
         function calculateOptimalGrid(count) {
             if (count === 0) return { cols: 1, rows: 1, photoSize: 100, displayCount: 0 };
             
-            const container = document.getElementById('gallery');
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
+            const gallery = document.getElementById('gallery');
+            const containerWidth = gallery.clientWidth || 1200;
+            const containerHeight = gallery.clientHeight || 600;
             
             console.log('Container size:', containerWidth, 'x', containerHeight, 'Photos:', count);
             
-            // Minimum photo size (in pixels) for visibility
-            const minPhotoSize = 50; // เพิ่มขนาดขั้นต่ำ
+            // For small number of photos, use simple layout
+            if (count <= 4) {
+                const cols = Math.min(count, 2);
+                const rows = Math.ceil(count / cols);
+                const photoSize = Math.min(
+                    (containerWidth - (cols - 1) * 10) / cols,
+                    (containerHeight - (rows - 1) * 10) / rows
+                );
+                
+                return {
+                    cols: cols,
+                    rows: rows,
+                    photoSize: Math.max(photoSize, 200),
+                    displayCount: count
+                };
+            }
             
-            // Calculate max possible photos that can fit
+            // For more photos, calculate optimal grid
+            const minPhotoSize = 100;
             const maxCols = Math.floor(containerWidth / minPhotoSize);
             const maxRows = Math.floor(containerHeight / minPhotoSize);
             const maxPhotos = maxCols * maxRows;
             
-            // If we have more photos than can fit, limit to maxPhotos
-            const displayCount = Math.min(count, maxPhotos, 100); // จำกัดไม่เกิน 100 รูป
+            const displayCount = Math.min(count, maxPhotos, 100);
             
-            // Find optimal grid ratio
             let bestCols = 1;
             let bestRows = 1;
             let bestPhotoSize = 0;
             
-            // Try different column counts
             for (let cols = 1; cols <= Math.min(maxCols, displayCount); cols++) {
                 const rows = Math.ceil(displayCount / cols);
                 if (rows > maxRows) continue;
                 
-                const photoWidth = (containerWidth - (cols - 1) * 2) / cols;
-                const photoHeight = (containerHeight - (rows - 1) * 2) / rows;
+                const photoWidth = (containerWidth - (cols - 1) * 10) / cols;
+                const photoHeight = (containerHeight - (rows - 1) * 10) / rows;
                 const photoSize = Math.min(photoWidth, photoHeight);
                 
                 if (photoSize > bestPhotoSize && photoSize >= minPhotoSize) {
@@ -388,11 +402,11 @@
                 }
             }
             
-            // Fallback if no suitable grid found
-            if (bestPhotoSize === 0) {
-                bestCols = Math.min(displayCount, 10);
-                bestRows = Math.ceil(displayCount / bestCols);
-                bestPhotoSize = Math.min(containerWidth / bestCols, containerHeight / bestRows);
+            // Fallback for single photo
+            if (bestPhotoSize === 0 || count === 1) {
+                bestCols = 1;
+                bestRows = 1;
+                bestPhotoSize = Math.min(containerWidth * 0.8, containerHeight * 0.8, 500);
             }
             
             console.log('Grid calculated:', bestCols, 'x', bestRows, 'size:', bestPhotoSize);
