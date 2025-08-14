@@ -416,13 +416,26 @@
                 return;
             }
 
+            // Force container to have proper dimensions
+            const container = gallery.parentElement;
+            if (container.clientHeight < 100) {
+                container.style.height = 'calc(100vh - 100px)';
+            }
+
             // Calculate optimal grid
             const grid = calculateOptimalGrid(photos.length);
-            const displayPhotos = photos.slice(0, grid.displayCount);
+            const displayPhotos = photos.slice(0, Math.max(grid.displayCount, photos.length));
             
-            // Set grid layout
-            gallery.style.gridTemplateColumns = `repeat(${grid.cols}, 1fr)`;
-            gallery.style.gridTemplateRows = `repeat(${grid.rows}, 1fr)`;
+            // Set grid layout - use fixed size if calculation fails
+            if (grid.cols > 0 && grid.rows > 0) {
+                gallery.style.gridTemplateColumns = `repeat(${grid.cols}, 1fr)`;
+                gallery.style.gridTemplateRows = `repeat(${grid.rows}, 1fr)`;
+            } else {
+                // Fallback layout
+                const cols = Math.min(photos.length, 4);
+                gallery.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                gallery.style.gridTemplateRows = 'auto';
+            }
             
             // Generate photo HTML
             gallery.innerHTML = displayPhotos.map((photo, index) => `
@@ -449,6 +462,8 @@
                 item.classList.add('new');
                 setTimeout(() => item.classList.remove('new'), 600);
             });
+            
+            console.log('Gallery updated with', displayPhotos.length, 'photos');
         }
 
         // Fetch photos from Google Forms/Sheets with fallback methods
